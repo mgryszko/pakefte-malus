@@ -2,4 +2,6 @@
 
 !Pipfile
 !Pipfile.lock
+!score.py
 !server.py
+!strava_client.py
