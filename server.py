@@ -12,7 +12,7 @@ app = FastAPI()
 CLIENT_ID = int(os.getenv("STRAVA_CLIENT_ID"))
 CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 PORT = int(os.getenv("PORT", 8080))
-REDIRECT_URL = f"{os.getenv('STRAVA_OAUTH_REDIRECT_PROTOCOL', 'http')}://{os.getenv('STRAVA_OAUTH_REDIRECT_HOST')}:{os.getenv('STRAVA_OAUTH_REDIRECT_PORT', PORT)}/malus"
+REDIRECT_URL = f"{os.getenv('STRAVA_OAUTH_REDIRECT_PROTOCOL', 'http')}://{os.getenv('STRAVA_OAUTH_REDIRECT_HOST', 'localhost')}:{os.getenv('STRAVA_OAUTH_REDIRECT_PORT', PORT)}/malus"
 
 CLUB_ID = int(os.getenv("CLUB_ID"))
 ACTIVITIES_LIMIT = int(os.getenv("ACTIVITIES_LIMIT"))
