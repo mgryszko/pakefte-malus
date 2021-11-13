@@ -16,7 +16,7 @@ REDIRECT_URL = f"{os.getenv('STRAVA_OAUTH_REDIRECT_PROTOCOL', 'http')}://{os.get
 
 CLUB_ID = int(os.getenv("CLUB_ID"))
 ACTIVITIES_LIMIT = int(os.getenv("ACTIVITIES_LIMIT"))
-CUTOFF_DISTANCE_M = 10_000
+CUTOFF_DISTANCE_M = int(os.getenv("CUTOFF_DISTANCE_M"))
 
 
 @app.get("/")
