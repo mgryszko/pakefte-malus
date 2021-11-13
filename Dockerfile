@@ -30,4 +30,4 @@ USER appuser
 COPY . .
 
 # Run the application
-ENTRYPOINT ["uvicorn", "server:app"]
+ENTRYPOINT ["python3", "server.py"]
