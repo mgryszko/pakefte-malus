@@ -1,14 +1,22 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Iterable, Callable
 
 CANONICAL_SPEED_KMH = 22.5
 
 
-def pakefte_malus(distance_m: int | float, time: timedelta) -> float:
+@dataclass(frozen=True)
+class Malus:
+    distance_km: float
+    avg_speed_kmh: float
+    malus: float
+
+
+def pakefte_malus(distance_km: float, time: timedelta) -> Malus:
     time_h = time.total_seconds() / 3600
-    avg_speed_kmh = (distance_m / 1000) / time_h
-    return abs(avg_speed_kmh - CANONICAL_SPEED_KMH) * time_h
+    avg_speed_kmh = distance_km / time_h
+    malus = abs(avg_speed_kmh - CANONICAL_SPEED_KMH) * time_h
+    return Malus(distance_km=distance_km, avg_speed_kmh=avg_speed_kmh, malus=malus)
 
 
 @dataclass(frozen=True)
@@ -23,15 +31,15 @@ class Athlete:
 @dataclass(frozen=True)
 class Activity:
     type: str
-    name: float
-    distance_m: int | float
+    distance_km: float
     time: timedelta
     athlete: Athlete
 
 
-def rides_with_malus(activities, cutoff_distance_m, malus=pakefte_malus):
-    rides = [activity for activity in activities if activity.type == "Ride" and activity.distance_m >= cutoff_distance_m]
-    rides_by_athlete = defaultdict(list)
+def malus_by_athlete(activities: Iterable[Activity], cutoff_distance_km: float, malus: Callable[[float, float], Malus]=pakefte_malus) -> dict:
+    rides = [activity for activity in activities if activity.type == "Ride" and activity.distance_km >= cutoff_distance_km]
+    rides_by_athlete = {}
     for ride in rides:
-        rides_by_athlete[ride.athlete.full_name()].append((ride.name, ride.distance_m, ride.time, malus(ride.distance_m, ride.time)))
-    return dict(rides_by_athlete)
+        (distance_km, time) = rides_by_athlete.get(ride.athlete, (0.0, timedelta(0)))
+        rides_by_athlete[ride.athlete] = (distance_km + ride.distance_km, time + ride.time)
+    return {athlete: malus(*rides) for (athlete, rides) in rides_by_athlete.items()}

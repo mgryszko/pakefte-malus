@@ -1,4 +1,3 @@
-import json
 import os
 
 import uvicorn
@@ -6,10 +5,11 @@ from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from stravalib.client import Client
-
-from score import rides_with_malus
-from strava_client import get_club_activities
 from telegram import Bot, Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.constants import PARSEMODE_HTML
+
+from score import malus_by_athlete
+from strava_client import get_club_activities
 
 CLIENT_ID = int(os.getenv("STRAVA_CLIENT_ID"))
 CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
@@ -19,7 +19,7 @@ REDIRECT_URL = f"{os.getenv('STRAVA_OAUTH_REDIRECT_URL', 'http://localhost:' + s
 
 CLUB_ID = int(os.getenv("CLUB_ID"))
 ACTIVITIES_LIMIT = int(os.getenv("ACTIVITIES_LIMIT"))
-CUTOFF_DISTANCE_M = int(os.getenv("CUTOFF_DISTANCE_M"))
+CUTOFF_DISTANCE_KM = int(os.getenv("CUTOFF_DISTANCE_KM"))
 
 app = FastAPI()
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
@@ -43,6 +43,21 @@ def authorize_browser():
     return RedirectResponse(authorize_url)
 
 
+def _sorted_by_malus_desc(athlete_malus):
+    return sorted(athlete_malus.items(), key=lambda kv: kv[1].malus, reverse=True)
+
+
+def _athlete_malus_to_json(athlete_malus):
+    return [{f"{athlete.first_name} {athlete.last_name}": malus} for (athlete, malus) in athlete_malus]
+
+
+def _athlete_malus_to_telegram_msg(athlete_malus):
+    def to_msg(athlete, malus):
+        return f"<b>{athlete.first_name} {athlete.last_name}</b>: <u>{round(malus.malus, 2)}</u>\n{round(malus.distance_km, 2)} km, {round(malus.avg_speed_kmh, 2)} km/h\n"
+
+    return "\n".join([to_msg(athlete, malus) for (athlete, malus) in athlete_malus])
+
+
 @app.get("/malus")
 def get_pakefte_malus(code=None, state=None):
     client = Client()
@@ -50,9 +65,9 @@ def get_pakefte_malus(code=None, state=None):
     client.access_token = token_response["access_token"]
 
     activities = get_club_activities(client, CLUB_ID, ACTIVITIES_LIMIT)
-    malus = rides_with_malus(activities, CUTOFF_DISTANCE_M)
-    if state is not None:
-        bot.send_message(chat_id=state, text=json.dumps(malus, default=str)[0:100])
+    athlete_malus = _sorted_by_malus_desc(malus_by_athlete(activities, CUTOFF_DISTANCE_KM))
+    if state:
+        bot.send_message(chat_id=state, text=_athlete_malus_to_telegram_msg(athlete_malus), parse_mode=PARSEMODE_HTML)
         html_content = """
 <html>
     <head><script>window.location.href = "https://telegram.me/pakeftemalusbot"</script></head>
@@ -61,7 +76,7 @@ def get_pakefte_malus(code=None, state=None):
 """
         return HTMLResponse(content=html_content, status_code=200)
     else:
-        return malus
+        return _athlete_malus_to_json(athlete_malus)
 
 
 if __name__ == "__main__":
