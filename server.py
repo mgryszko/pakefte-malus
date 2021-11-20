@@ -1,9 +1,10 @@
+import json
 import os
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from stravalib.client import Client
 from telegram import Bot, Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import PARSEMODE_HTML
@@ -48,12 +49,17 @@ def _sorted_by_malus_desc(athlete_malus):
 
 
 def _athlete_malus_to_json(athlete_malus):
-    return [{f"{athlete.first_name} {athlete.last_name}": malus} for (athlete, malus) in athlete_malus]
+    return json.dumps(
+        [{f"{athlete.first_name} {athlete.last_name}": malus} for (athlete, malus) in athlete_malus],
+        indent=4,
+        default=str,
+    ).encode("utf-8")
 
 
 def _athlete_malus_to_telegram_msg(athlete_malus):
     def to_msg(athlete, malus):
-        return f"<b>{athlete.first_name} {athlete.last_name}</b>: <u>{round(malus.malus, 2)}</u>\n{round(malus.distance_km, 2)} km, {round(malus.avg_speed_kmh, 2)} km/h\n"
+        return f"""<b>{athlete.first_name} {athlete.last_name}</b>: <u>{round(malus.malus, 2)}</u>
+{malus.rides.count} act., {round(malus.rides.distance_km, 2)} km, {round(malus.rides.avg_speed_kmh, 2)} km/h\n"""
 
     return "\n".join([to_msg(athlete, malus) for (athlete, malus) in athlete_malus])
 
@@ -76,7 +82,7 @@ def get_pakefte_malus(code=None, state=None):
 """
         return HTMLResponse(content=html_content, status_code=200)
     else:
-        return _athlete_malus_to_json(athlete_malus)
+        return Response(content=_athlete_malus_to_json(athlete_malus), status_code=200, media_type="application/json")
 
 
 if __name__ == "__main__":
