@@ -58,8 +58,8 @@ def _athlete_malus_to_json(athlete_malus):
 
 def _athlete_malus_to_telegram_msg(athlete_malus):
     def to_msg(athlete, malus):
-        return f"""<b>{athlete.first_name} {athlete.last_name}</b>: <u>{round(malus.malus, 2)}</u>
-{malus.rides.count} act., {round(malus.rides.distance_km, 2)} km, {round(malus.rides.avg_speed_kmh, 2)} km/h\n"""
+        return f"""<b>{athlete.first_name} {athlete.last_name}</b>: <u>{malus.malus:.2f}</u>
+{malus.rides.count} act., {malus.rides.distance_km:.2f} km, {malus.rides.avg_speed_kmh:.2f} km/h\n"""
 
     return "\n".join([to_msg(athlete, malus) for (athlete, malus) in athlete_malus])
 
