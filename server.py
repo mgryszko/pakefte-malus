@@ -2,6 +2,7 @@ import json
 import os
 
 import uvicorn
+from cryptography.fernet import Fernet
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -9,11 +10,13 @@ from stravalib.client import Client
 from telegram import Bot, Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import PARSEMODE_HTML
 
+from crypto import Crypto
 from score import malus_by_athlete
 from strava_client import get_club_activities
 
 CLIENT_ID = int(os.getenv("STRAVA_CLIENT_ID"))
 CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
+STATE_ENCRYPTION_KEY = os.getenv("STRAVA_OAUTH_STATE_ENCRYPTION_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 PORT = int(os.getenv("PORT", 8080))
 REDIRECT_URL = f"{os.getenv('STRAVA_OAUTH_REDIRECT_URL', 'http://localhost:' + str(PORT))}/malus"
@@ -24,13 +27,14 @@ CUTOFF_DISTANCE_KM = int(os.getenv("CUTOFF_DISTANCE_KM"))
 
 app = FastAPI()
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
+crypto = Crypto(STATE_ENCRYPTION_KEY)
 
 
 @app.post("/")
 async def authorize_telegram(request: Request):
     update = Update.de_json(await request.json(), bot)
     client = Client()
-    authorize_url = client.authorization_url(client_id=CLIENT_ID, redirect_uri=REDIRECT_URL, state=update.message.chat.id)
+    authorize_url = client.authorization_url(client_id=CLIENT_ID, redirect_uri=REDIRECT_URL, state=crypto.encrypt(update.message.chat.id))
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton("Authorize", url=authorize_url),
     ]])
@@ -73,7 +77,7 @@ def get_pakefte_malus(code=None, state=None):
     activities = get_club_activities(client, CLUB_ID, ACTIVITIES_LIMIT)
     athlete_malus = _sorted_by_malus_desc(malus_by_athlete(activities, CUTOFF_DISTANCE_KM))
     if state:
-        bot.send_message(chat_id=state, text=_athlete_malus_to_telegram_msg(athlete_malus), parse_mode=PARSEMODE_HTML)
+        bot.send_message(chat_id=crypto.decrypt(state), text=_athlete_malus_to_telegram_msg(athlete_malus), parse_mode=PARSEMODE_HTML)
         html_content = """
 <html>
     <head><script>window.location.href = "https://telegram.me/pakeftemalusbot"</script></head>
