@@ -2,7 +2,7 @@ from typing import Iterable
 
 import stravalib.model
 
-from score import Activity, Athlete
+from malus.score import Activity, Athlete
 
 
 def _to_activity(strava_activity: stravalib.model.Activity) -> Activity:

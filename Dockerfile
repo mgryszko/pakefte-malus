@@ -30,4 +30,4 @@ USER appuser
 COPY . .
 
 # Run the application
-ENTRYPOINT ["python3", "server.py"]
+ENTRYPOINT ["python3", "-m", "malus.server"]

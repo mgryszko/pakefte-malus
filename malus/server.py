@@ -2,7 +2,6 @@ import json
 import os
 
 import uvicorn
-from cryptography.fernet import Fernet
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -10,9 +9,9 @@ from stravalib.client import Client
 from telegram import Bot, Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import PARSEMODE_HTML
 
-from crypto import Crypto
-from score import malus_by_athlete
-from strava_client import get_club_activities
+from malus.crypto import Crypto
+from malus.score import malus_by_athlete
+from malus.strava_client import get_club_activities
 
 CLIENT_ID = int(os.getenv("STRAVA_CLIENT_ID"))
 CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")

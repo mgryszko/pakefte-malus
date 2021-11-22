@@ -16,5 +16,5 @@ cryptography = "==35.0.0"
 python_version = "3.10"
 
 [scripts]
-test = "python -m unittest"
-server = "uvicorn server:app --host=0.0.0.0 --port=8080 --reload"
+test = "python -m unittest discover tests"
+server = "uvicorn malus.server:app --host=0.0.0.0 --port=8080 --reload"

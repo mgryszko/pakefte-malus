@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, call
 
-from score import *
+from malus.score import *
 
 
 class TestMalus(unittest.TestCase):
