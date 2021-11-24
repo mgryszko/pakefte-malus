@@ -56,11 +56,19 @@ class Malus:
     malus: float
 
 
-def malus_by_athlete(activities: Iterable[Activity], cutoff_distance_km: float,
+def malus_by_athlete(activities: Iterable[Activity], activity_cutoff_distance_km: float,
     malus: Callable[[float, float], Malus] = pakefte_malus) -> dict[Athlete, Malus]:
-    rides = [activity for activity in activities if activity.type == "Ride" and activity.distance_km >= cutoff_distance_km]
+    rides = [activity for activity in activities if activity.type == "Ride" and activity.distance_km >= activity_cutoff_distance_km]
     rides_by_athlete = _cumulative_rides_by_athlete(rides)
     return {athlete: Malus(rides=rides, malus=malus(rides.distance_km, rides.time)) for (athlete, rides) in rides_by_athlete.items()}
+
+
+def filter_rides_above_cutoff_distance(malus_by_athlete: dict[Athlete, Malus], rides_cutoff_distance_km: float) -> \
+    tuple[dict[Athlete, Malus], list[Athlete]]:
+    filtered_malus = {athlete: malus for (athlete, malus) in malus_by_athlete.items() if
+                      malus.rides.distance_km >= rides_cutoff_distance_km}
+    excluded_athletes = [athlete for (athlete, malus) in malus_by_athlete.items() if malus.rides.distance_km < rides_cutoff_distance_km]
+    return filtered_malus, excluded_athletes
 
 
 def _cumulative_rides_by_athlete(rides: Iterable[Activity]) -> dict[Athlete, CumulativeRides]:

@@ -16,7 +16,7 @@ class TestMalus(unittest.TestCase):
         self.assertAlmostEqual(13.045, pakefte_malus(87.514, timedelta(hours=3, minutes=18, seconds=35)), delta=0.001)
 
 
-class TestRidesWithMalus(unittest.TestCase):
+class TestMalusByAthlete(unittest.TestCase):
     athleteA = Athlete(first_name="A", last_name="B")
     athleteB = Athlete(first_name="C", last_name="D")
 
@@ -25,15 +25,15 @@ class TestRidesWithMalus(unittest.TestCase):
 
     def test_empty_activities(self):
         activities = []
-        self.assertEqual(malus_by_athlete(activities=activities, cutoff_distance_km=0, malus=None), {})
+        self.assertEqual(malus_by_athlete(activities=activities, activity_cutoff_distance_km=0, malus=None), {})
 
     def test_not_a_ride(self):
         activities = [activity(type="Not a Ride")]
-        self.assertEqual(malus_by_athlete(activities=activities, cutoff_distance_km=0, malus=None), {})
+        self.assertEqual(malus_by_athlete(activities=activities, activity_cutoff_distance_km=0, malus=None), {})
 
     def test_below_cutoff_distance(self):
         activities = [ride(distance_km=0.999)]
-        self.assertEqual(malus_by_athlete(activities=activities, cutoff_distance_km=1.0, malus=None), {})
+        self.assertEqual(malus_by_athlete(activities=activities, activity_cutoff_distance_km=1.0, malus=None), {})
 
     def test_activities(self):
         self.malus.side_effect = [1.0, 2.0]
@@ -48,11 +48,28 @@ class TestRidesWithMalus(unittest.TestCase):
             self.athleteA: Malus(rides=CumulativeRides(count=3, distance_km=60.0, time=timedelta(hours=1, minutes=45)), malus=1.0),
             self.athleteB: Malus(rides=CumulativeRides(count=2, distance_km=23.0, time=timedelta(minutes=59)), malus=2.0),
         }
-        self.assertEqual(expected, malus_by_athlete(activities=activities, cutoff_distance_km=10.0, malus=self.malus))
+        self.assertEqual(expected, malus_by_athlete(activities=activities, activity_cutoff_distance_km=10.0, malus=self.malus))
         self.malus.assert_has_calls([
             call(60.0, timedelta(hours=1, minutes=45)),
             call(23.0, timedelta(minutes=59)),
         ])
+
+
+class TestFilterRides(unittest.TestCase):
+    athleteA = Athlete(first_name="A", last_name="B")
+    athleteB = Athlete(first_name="C", last_name="D")
+    athleteC = Athlete(first_name="D", last_name="F")
+
+    def test_filter(self):
+        rides = {
+            self.athleteA: malus(rides=cumulative_rides(distance_km=100.0)),
+            self.athleteB: malus(rides=cumulative_rides(distance_km=99.999)),
+            self.athleteC: malus(rides=cumulative_rides(distance_km=100.001)),
+        }
+        self.assertEqual(filter_rides_above_cutoff_distance(malus_by_athlete=rides, rides_cutoff_distance_km=100.0), ({
+            self.athleteA: malus(rides=cumulative_rides(distance_km=100.0)),
+            self.athleteC: malus(rides=cumulative_rides(distance_km=100.001)),
+        }, [self.athleteB]))
 
 
 def ride(**kwargs):
@@ -67,3 +84,16 @@ def activity(**kwargs):
         "athlete": None,
     }
     return Activity(**(empty_activity | kwargs))
+
+
+def malus(**kwargs):
+    return Malus(**({"rides": None, "malus": None} | kwargs))
+
+
+def cumulative_rides(**kwargs):
+    empty_rides = {
+        "count": None,
+        "distance_km": None,
+        "time": None,
+    }
+    return CumulativeRides(**(empty_rides | kwargs))
