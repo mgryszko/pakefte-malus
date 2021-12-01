@@ -56,11 +56,40 @@ class Malus:
     malus: float
 
 
-def malus_by_athlete(activities: Iterable[Activity], activity_cutoff_distance_km: float,
-    malus: Callable[[float, float], Malus] = pakefte_malus) -> dict[Athlete, Malus]:
-    rides = [activity for activity in activities if activity.type == "Ride" and activity.distance_km >= activity_cutoff_distance_km]
-    rides_by_athlete = _cumulative_rides_by_athlete(rides)
-    return {athlete: Malus(rides=rides, malus=malus(rides.distance_km, rides.time)) for (athlete, rides) in rides_by_athlete.items()}
+class malus_by_athlete:
+    def __init__(self, max_rides_to_inspect: int = 1000,
+        max_rides_per_athlete: int = 10,
+        activity_cutoff_distance_km: float = 10,
+        malus: Callable[[float, float], Malus] = pakefte_malus):
+        self.max_rides_to_inspect = max_rides_to_inspect
+        self.max_rides_per_athlete = max_rides_per_athlete
+        self.activity_cutoff_distance_km = activity_cutoff_distance_km
+        self.malus = malus
+
+    def __call__(self, activities: Iterable[Activity], athletes: Iterable[Athlete]) -> dict[Athlete, Malus]:
+        rides = filter(lambda a: a.type == "Ride" and a.distance_km >= self.activity_cutoff_distance_km, activities)
+
+        rides_by_athlete = {}
+        rem_rides = self.max_rides_to_inspect
+        rem_rides_by_athlete = {athlete: self.max_rides_per_athlete for athlete in athletes}
+        while rem_rides > 0 and len(rem_rides_by_athlete) > 0 and (ride := next(rides, None)) is not None:
+            rem_athlete_rides = rem_rides_by_athlete.get(ride.athlete, 0)
+            if rem_athlete_rides > 0:
+                cumulative_rides = rides_by_athlete.get(ride.athlete, CumulativeRides.empty())
+                rides_by_athlete[ride.athlete] = cumulative_rides.add_ride(ride.distance_km, ride.time)
+            _decrease_remaining(rem_rides_by_athlete, ride.athlete)
+            rem_rides -= 1
+
+        return {athlete: Malus(rides=rides, malus=self.malus(rides.distance_km, rides.time))
+                for (athlete, rides) in rides_by_athlete.items()}
+
+
+def _decrease_remaining(remaining_athletes: dict[Athlete, int], athlete: Athlete):
+    remaining = remaining_athletes.get(athlete, 0) - 1
+    if remaining > 0:
+        remaining_athletes[athlete] = remaining
+    else:
+        remaining_athletes.pop(athlete, None)
 
 
 def filter_rides_above_cutoff_distance(malus_by_athlete: dict[Athlete, Malus], rides_cutoff_distance_km: float) -> \

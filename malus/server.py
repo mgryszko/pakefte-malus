@@ -11,7 +11,7 @@ from telegram.constants import PARSEMODE_HTML
 
 from malus.crypto import Crypto
 from malus.score import malus_by_athlete, filter_rides_above_cutoff_distance
-from malus.strava_client import get_club_activities
+from malus.strava_client import get_club_athletes, get_club_activities
 
 CLIENT_ID = int(os.getenv("STRAVA_CLIENT_ID"))
 CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
@@ -21,7 +21,8 @@ PORT = int(os.getenv("PORT", 8080))
 REDIRECT_URL = f"{os.getenv('STRAVA_OAUTH_REDIRECT_URL', 'http://localhost:' + str(PORT))}/malus"
 
 CLUB_ID = int(os.getenv("CLUB_ID"))
-ACTIVITIES_LIMIT = int(os.getenv("ACTIVITIES_LIMIT"))
+MAX_RIDES_TO_INSPECT = int(os.getenv("MAX_RIDES_TO_INSPECT"))
+MAX_RIDES_PER_ATHLETE = int(os.getenv("MAX_RIDES_PER_ATHLETE"))
 ACTIVITY_CUTOFF_DISTANCE_KM = int(os.getenv("ACTIVITY_CUTOFF_DISTANCE_KM"))
 RIDES_CUTOFF_DISTANCE_KM = int(os.getenv("RIDES_CUTOFF_DISTANCE_KM"))
 
@@ -29,9 +30,13 @@ app = FastAPI()
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 crypto = Crypto(STATE_ENCRYPTION_KEY)
 
-HELP_MESSAGE = f"""Calcula el <i>malus</i> de Pakefte: 1 punto negativo por cada 1 km/h de desviación de la media de 22,5 km/h por cada hora de actividad. Ejemplo: una ruta de 50 km hecha en 2 horas (25 km/h de media) da el malus de 5.
-        
-Excluyo actividades que no sean de bicicleta y por debajo de {ACTIVITY_CUTOFF_DISTANCE_KM} km. Tampoco calculo el malus si alguien ha hecho menos de {RIDES_CUTOFF_DISTANCE_KM} km en total. Tengo en cuenta las {ACTIVITIES_LIMIT} últimas actividades del club de Strava de Pakefte."""
+HELP_MESSAGE = f"""Calculo el <i>malus</i> de Pakefte: 1 punto negativo por cada 1 km/h de desviación de la media de 22,5 km/h por cada hora de actividad. Ejemplo: una ruta de 50 km hecha en 2 horas (25 km/h de media) da el malus de 5.
+
+Tengo en cuenta:
+- las {MAX_RIDES_TO_INSPECT} últimas actividades del club de Strava de Pakefte
+- las {MAX_RIDES_PER_ATHLETE} últimas actividades de cada Pakeftero cuyos kilómetros totales tiene que ser mayores a {RIDES_CUTOFF_DISTANCE_KM} km 
+- únicamente las actividades de bicicleta
+- actividades individuales por encima de {ACTIVITY_CUTOFF_DISTANCE_KM} km"""
 
 REDIRECT_TO_TELEGRAM_HTML = """<html>
     <head><script>window.location.href = "https://t.me/pakeftemalusbot"</script></head>
@@ -56,7 +61,7 @@ async def handle_bot_message(request: Request):
                                                  state=crypto.encrypt(message.chat.id))
         reply_markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton("¡Vamos!", url=authorize_url)]])
         message.reply_text("Autoriza el acceso a Strava", reply_markup=reply_markup)
-    elif command == "start" or command == "ayuda":
+    elif command == "/start" or command == "ayuda":
         reply_markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton("Malus", callback_data="malus")]])
         message.reply_html(HELP_MESSAGE, reply_markup=reply_markup)
     else:
@@ -79,8 +84,11 @@ def get_pakefte_malus(code=None, state=None):
     token_response = client.exchange_code_for_token(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, code=code)
     client.access_token = token_response["access_token"]
 
-    activities = get_club_activities(client, CLUB_ID, ACTIVITIES_LIMIT)
-    malus = malus_by_athlete(activities, ACTIVITY_CUTOFF_DISTANCE_KM)
+    activities = get_club_activities(client, CLUB_ID)
+    athletes = get_club_athletes(client, CLUB_ID)
+    malus = malus_by_athlete(max_rides_to_inspect=MAX_RIDES_TO_INSPECT,
+                             max_rides_per_athlete=MAX_RIDES_PER_ATHLETE,
+                             activity_cutoff_distance_km=ACTIVITY_CUTOFF_DISTANCE_KM)(activities, athletes)
     malus, excluded_athletes = filter_rides_above_cutoff_distance(malus, RIDES_CUTOFF_DISTANCE_KM)
     sorted_malus = _sorted_by_malus_desc(malus)
     if state:

@@ -5,6 +5,16 @@ import stravalib.model
 from malus.score import Activity, Athlete
 
 
+def get_club_activities(client: stravalib.client.Client, club_id: int) -> Iterable[Activity]:
+    activities = client.get_club_activities(club_id)
+    return map(_to_activity, activities)
+
+
+def get_club_athletes(client: stravalib.client.Client, club_id: int) -> Iterable[Athlete]:
+    members = client.get_club_members(club_id)
+    return map(_to_athlete, members)
+
+
 def _to_activity(strava_activity: stravalib.model.Activity) -> Activity:
     return Activity(
         type=strava_activity.type,
@@ -14,6 +24,8 @@ def _to_activity(strava_activity: stravalib.model.Activity) -> Activity:
     )
 
 
-def get_club_activities(client: stravalib.client.Client, club_id: int, limit: int) -> Iterable[Activity]:
-    activities = client.get_club_activities(club_id, limit)
-    return map(_to_activity, activities)
+def _to_athlete(strava_athlete: stravalib.model.Athlete) -> Athlete:
+    return Athlete(
+        first_name=strava_athlete.firstname,
+        last_name=strava_athlete.lastname,
+    )

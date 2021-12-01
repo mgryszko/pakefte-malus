@@ -17,25 +17,30 @@ class TestMalus(unittest.TestCase):
 
 
 class TestMalusByAthlete(unittest.TestCase):
-    athleteA = Athlete(first_name="A", last_name="B")
-    athleteB = Athlete(first_name="C", last_name="D")
+    athleteA = Athlete(first_name="A", last_name="AAA")
+    athleteB = Athlete(first_name="B", last_name="BBB")
+    athleteC = Athlete(first_name="C", last_name="CCC")
 
     def setUp(self):
         self.malus = Mock()
 
     def test_empty_activities(self):
         activities = []
-        self.assertEqual(malus_by_athlete(activities=activities, activity_cutoff_distance_km=0, malus=None), {})
+        self.assertEqual(malus_by_athlete(malus=None)(activities=activities, athletes=[self.athleteA]), {})
+
+    def test_empty_athletes(self):
+        activities = [ride(athlete=self.athleteA, distance_km=10.0, time=timedelta(hours=1))]
+        self.assertEqual(malus_by_athlete(malus=None)(activities=activities, athletes=[]), {})
 
     def test_not_a_ride(self):
         activities = [activity(type="Not a Ride")]
-        self.assertEqual(malus_by_athlete(activities=activities, activity_cutoff_distance_km=0, malus=None), {})
+        self.assertEqual(malus_by_athlete(malus=None)(activities=activities, athletes=[self.athleteA]), {})
 
     def test_below_cutoff_distance(self):
         activities = [ride(distance_km=0.999)]
-        self.assertEqual(malus_by_athlete(activities=activities, activity_cutoff_distance_km=1.0, malus=None), {})
+        self.assertEqual(malus_by_athlete(malus=None)(activities=activities, athletes=[self.athleteA]), {})
 
-    def test_activities(self):
+    def test_more_activities_than_limits(self):
         self.malus.side_effect = [1.0, 2.0]
         activities = [
             ride(athlete=self.athleteA, distance_km=10.0, time=timedelta(hours=1)),
@@ -43,14 +48,21 @@ class TestMalusByAthlete(unittest.TestCase):
             ride(athlete=self.athleteB, distance_km=11.0, time=timedelta(minutes=45)),
             ride(athlete=self.athleteA, distance_km=30.0, time=timedelta(minutes=15)),
             ride(athlete=self.athleteB, distance_km=12.0, time=timedelta(minutes=14)),
+            ride(athlete=self.athleteB, distance_km=13.0, time=timedelta(minutes=15)),
         ]
         expected = {
-            self.athleteA: Malus(rides=CumulativeRides(count=3, distance_km=60.0, time=timedelta(hours=1, minutes=45)), malus=1.0),
+            self.athleteA: Malus(rides=CumulativeRides(count=2, distance_km=30.0, time=timedelta(hours=1, minutes=30)), malus=1.0),
             self.athleteB: Malus(rides=CumulativeRides(count=2, distance_km=23.0, time=timedelta(minutes=59)), malus=2.0),
         }
-        self.assertEqual(expected, malus_by_athlete(activities=activities, activity_cutoff_distance_km=10.0, malus=self.malus))
+
+        self.assertEqual(expected, malus_by_athlete(max_rides_to_inspect=5,
+                                                    max_rides_per_athlete=2,
+                                                    activity_cutoff_distance_km=10.0,
+                                                    malus=self.malus)(activities=activities,
+                                                                      athletes=[self.athleteA, self.athleteB, self.athleteC]))
+
         self.malus.assert_has_calls([
-            call(60.0, timedelta(hours=1, minutes=45)),
+            call(30.0, timedelta(hours=1, minutes=30)),
             call(23.0, timedelta(minutes=59)),
         ])
 
