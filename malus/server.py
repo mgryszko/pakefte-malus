@@ -30,13 +30,13 @@ app = FastAPI()
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 crypto = Crypto(STATE_ENCRYPTION_KEY)
 
-HELP_MESSAGE = f"""Calculo el <i>malus</i> de Pakefte: 1 punto negativo por cada 1 km/h de desviación de la media de 22,5 km/h por cada hora de actividad. Ejemplo: una ruta de 50 km hecha en 2 horas (25 km/h de media) da el malus de 5.
+HELP_MESSAGE = f"""Calculo el <i>malus</i> de Pakefte: 1 punto negativo por cada 1 km/h de desviación de la media de 22,5 km/h por cada hora de actividad. 
+Ejemplo: una ruta de 50 km hecha en 2 horas (25 km/h de media) da el malus de 5.
 
 Tengo en cuenta:
-- las {MAX_RIDES_TO_INSPECT} últimas actividades del club de Strava de Pakefte
-- las {MAX_RIDES_PER_ATHLETE} últimas actividades de cada Pakeftero cuyos kilómetros totales tiene que ser mayores a {RIDES_CUTOFF_DISTANCE_KM} km 
 - únicamente las actividades de bicicleta
-- actividades individuales por encima de {ACTIVITY_CUTOFF_DISTANCE_KM} km"""
+- las últimas {MAX_RIDES_TO_INSPECT} actividades del club de Strava de Pakefte
+- las últimas {MAX_RIDES_PER_ATHLETE} actividades de cada Pakeftero con la distancia individual >= {ACTIVITY_CUTOFF_DISTANCE_KM} km y que sumen más de {RIDES_CUTOFF_DISTANCE_KM} km"""
 
 REDIRECT_TO_TELEGRAM_HTML = """<html>
     <head><script>window.location.href = "https://t.me/pakeftemalusbot"</script></head>
