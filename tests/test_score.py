@@ -48,15 +48,13 @@ class TestMalusByAthlete(unittest.TestCase):
             ride(athlete=self.athleteB, distance_km=11.0, time=timedelta(minutes=45)),
             ride(athlete=self.athleteA, distance_km=30.0, time=timedelta(minutes=15)),
             ride(athlete=self.athleteB, distance_km=12.0, time=timedelta(minutes=14)),
-            ride(athlete=self.athleteB, distance_km=13.0, time=timedelta(minutes=15)),
         ]
         expected = {
             self.athleteA: Malus(rides=CumulativeRides(count=2, distance_km=30.0, time=timedelta(hours=1, minutes=30)), malus=1.0),
             self.athleteB: Malus(rides=CumulativeRides(count=2, distance_km=23.0, time=timedelta(minutes=59)), malus=2.0),
         }
 
-        self.assertEqual(expected, malus_by_athlete(max_rides_to_inspect=5,
-                                                    max_rides_per_athlete=2,
+        self.assertEqual(expected, malus_by_athlete(max_rides_per_athlete=2,
                                                     activity_cutoff_distance_km=10.0,
                                                     malus=self.malus)(activities=activities,
                                                                       athletes=[self.athleteA, self.athleteB, self.athleteC]))

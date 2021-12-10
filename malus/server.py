@@ -21,7 +21,6 @@ PORT = int(os.getenv("PORT", 8080))
 REDIRECT_URL = f"{os.getenv('STRAVA_OAUTH_REDIRECT_URL', 'http://localhost:' + str(PORT))}/malus"
 
 CLUB_ID = int(os.getenv("CLUB_ID"))
-MAX_RIDES_TO_INSPECT = int(os.getenv("MAX_RIDES_TO_INSPECT"))
 MAX_RIDES_PER_ATHLETE = int(os.getenv("MAX_RIDES_PER_ATHLETE"))
 ACTIVITY_CUTOFF_DISTANCE_KM = int(os.getenv("ACTIVITY_CUTOFF_DISTANCE_KM"))
 RIDES_CUTOFF_DISTANCE_KM = int(os.getenv("RIDES_CUTOFF_DISTANCE_KM"))
@@ -35,8 +34,8 @@ Ejemplo: una ruta de 50 km hecha en 2 horas (25 km/h de media) da el malus de 5.
 
 Tengo en cuenta:
 - únicamente las actividades de bicicleta
-- las últimas {MAX_RIDES_TO_INSPECT} actividades del club de Strava de Pakefte
-- las últimas {MAX_RIDES_PER_ATHLETE} actividades de cada Pakeftero con la distancia individual >= {ACTIVITY_CUTOFF_DISTANCE_KM} km y que sumen más de {RIDES_CUTOFF_DISTANCE_KM} km"""
+- las últimas {MAX_RIDES_PER_ATHLETE} actividades de cada Pakeftero con la distancia individual >= {ACTIVITY_CUTOFF_DISTANCE_KM} km y que sumen más de {RIDES_CUTOFF_DISTANCE_KM} km
+- todas las actividades del club de Pakefte devueltas por la API de Strava"""
 
 REDIRECT_TO_TELEGRAM_HTML = """<html>
     <head><script>window.location.href = "https://t.me/pakeftemalusbot"</script></head>
@@ -86,8 +85,7 @@ def get_pakefte_malus(code=None, state=None):
 
     activities = get_club_activities(client, CLUB_ID)
     athletes = get_club_athletes(client, CLUB_ID)
-    malus = malus_by_athlete(max_rides_to_inspect=MAX_RIDES_TO_INSPECT,
-                             max_rides_per_athlete=MAX_RIDES_PER_ATHLETE,
+    malus = malus_by_athlete(max_rides_per_athlete=MAX_RIDES_PER_ATHLETE,
                              activity_cutoff_distance_km=ACTIVITY_CUTOFF_DISTANCE_KM)(activities, athletes)
     malus, excluded_athletes = filter_rides_above_cutoff_distance(malus, RIDES_CUTOFF_DISTANCE_KM)
     sorted_malus = _sorted_by_malus_desc(malus)

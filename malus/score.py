@@ -57,11 +57,9 @@ class Malus:
 
 
 class malus_by_athlete:
-    def __init__(self, max_rides_to_inspect: int = 1000,
-        max_rides_per_athlete: int = 10,
+    def __init__(self, max_rides_per_athlete: int = 10,
         activity_cutoff_distance_km: float = 10,
         malus: Callable[[float, float], Malus] = pakefte_malus):
-        self.max_rides_to_inspect = max_rides_to_inspect
         self.max_rides_per_athlete = max_rides_per_athlete
         self.activity_cutoff_distance_km = activity_cutoff_distance_km
         self.malus = malus
@@ -70,15 +68,13 @@ class malus_by_athlete:
         rides = filter(lambda a: a.type == "Ride" and a.distance_km >= self.activity_cutoff_distance_km, activities)
 
         rides_by_athlete = {}
-        rem_rides = self.max_rides_to_inspect
         rem_rides_by_athlete = {athlete: self.max_rides_per_athlete for athlete in athletes}
-        while rem_rides > 0 and len(rem_rides_by_athlete) > 0 and (ride := next(rides, None)) is not None:
+        while len(rem_rides_by_athlete) > 0 and (ride := next(rides, None)) is not None:
             rem_athlete_rides = rem_rides_by_athlete.get(ride.athlete, 0)
             if rem_athlete_rides > 0:
                 cumulative_rides = rides_by_athlete.get(ride.athlete, CumulativeRides.empty())
                 rides_by_athlete[ride.athlete] = cumulative_rides.add_ride(ride.distance_km, ride.time)
             _decrease_remaining(rem_rides_by_athlete, ride.athlete)
-            rem_rides -= 1
 
         return {athlete: Malus(rides=rides, malus=self.malus(rides.distance_km, rides.time))
                 for (athlete, rides) in rides_by_athlete.items()}
