@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import uvicorn
@@ -7,7 +8,7 @@ from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from stravalib.client import Client
 from telegram import Bot, Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.constants import PARSEMODE_HTML
+from telegram.constants import ParseMode
 
 from malus.crypto import Crypto
 from malus.score import malus_by_athlete, filter_rides_above_cutoff_distance
@@ -24,6 +25,9 @@ CLUB_ID = int(os.getenv("CLUB_ID"))
 MAX_RIDES_PER_ATHLETE = int(os.getenv("MAX_RIDES_PER_ATHLETE"))
 ACTIVITY_CUTOFF_DISTANCE_KM = int(os.getenv("ACTIVITY_CUTOFF_DISTANCE_KM"))
 RIDES_CUTOFF_DISTANCE_KM = int(os.getenv("RIDES_CUTOFF_DISTANCE_KM"))
+
+logging.basicConfig(level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S.%f'[:-3], format='%(asctime)s %(levelname)+5s %(name)s: %(message)s')
+log = logging.getLogger(__name__)
 
 app = FastAPI()
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
@@ -53,19 +57,20 @@ async def handle_bot_message(request: Request):
         command, message = update.callback_query.data, update.callback_query.message
     else:
         raise ValueError("Neither message nor callback_query received in the request")
+    log.info(f"Received command: {command}")
 
-    if command == "malus":
+    if command.lower() == "malus" or command.lower() == "/malus":
         client = Client()
         authorize_url = client.authorization_url(client_id=CLIENT_ID, redirect_uri=REDIRECT_URL,
                                                  state=crypto.encrypt(message.chat.id))
         reply_markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton("¡Vamos!", url=authorize_url)]])
-        message.reply_text("Autoriza el acceso a Strava", reply_markup=reply_markup)
-    elif command == "/start" or command == "ayuda":
+        await message.reply_text("Autoriza el acceso a Strava", reply_markup=reply_markup)
+    elif command == "/start" or command.lower() == "ayuda" or command.lower() == "/ayuda":
         reply_markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton("Malus", callback_data="malus")]])
-        message.reply_html(HELP_MESSAGE, reply_markup=reply_markup)
+        await message.reply_html(HELP_MESSAGE, reply_markup=reply_markup)
     else:
         reply_markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton("Ayuda", callback_data="ayuda")]])
-        message.reply_html(f"No te he entendido", reply_markup=reply_markup)
+        await message.reply_html("No te he entendido", reply_markup=reply_markup)
 
     return Response(status_code=200)
 
@@ -78,7 +83,7 @@ def authorize():
 
 
 @app.get("/malus")
-def get_pakefte_malus(code=None, state=None):
+async def get_pakefte_malus(code=None, state=None):
     client = Client()
     token_response = client.exchange_code_for_token(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, code=code)
     client.access_token = token_response["access_token"]
@@ -90,9 +95,9 @@ def get_pakefte_malus(code=None, state=None):
     malus, excluded_athletes = filter_rides_above_cutoff_distance(malus, RIDES_CUTOFF_DISTANCE_KM)
     sorted_malus = _sorted_by_malus_desc(malus)
     if state:
-        bot.send_message(chat_id=crypto.decrypt(state),
-                         text=_athlete_malus_to_telegram_msg(sorted_malus, excluded_athletes),
-                         parse_mode=PARSEMODE_HTML)
+        await bot.send_message(chat_id=crypto.decrypt(state),
+                               text=_athlete_malus_to_telegram_msg(sorted_malus, excluded_athletes),
+                               parse_mode=ParseMode.HTML)
         return HTMLResponse(content=REDIRECT_TO_TELEGRAM_HTML, status_code=200)
     else:
         return Response(content=_athlete_malus_to_json(sorted_malus, excluded_athletes), status_code=200, media_type="application/json")

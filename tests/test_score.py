@@ -33,7 +33,7 @@ class TestMalusByAthlete(unittest.TestCase):
         self.assertEqual(malus_by_athlete(malus=None)(activities=activities, athletes=[]), {})
 
     def test_not_a_ride(self):
-        activities = [activity(type="Not a Ride")]
+        activities = [activity(type="Not a ride")]
         self.assertEqual(malus_by_athlete(malus=None)(activities=activities, athletes=[self.athleteA]), {})
 
     def test_below_cutoff_distance(self):

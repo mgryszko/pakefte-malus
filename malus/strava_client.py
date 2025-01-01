@@ -1,6 +1,8 @@
+from datetime import timedelta
 from typing import Iterable
 
-import stravalib.model
+import stravalib
+from stravalib.strava_model import ClubAthlete, ClubActivity
 
 from malus.score import Activity, Athlete
 
@@ -15,16 +17,16 @@ def get_club_athletes(client: stravalib.client.Client, club_id: int) -> Iterable
     return map(_to_athlete, members)
 
 
-def _to_activity(strava_activity: stravalib.model.Activity) -> Activity:
+def _to_activity(strava_activity: ClubActivity) -> Activity:
     return Activity(
-        type=strava_activity.type,
-        distance_km=strava_activity.distance.get_num() / 1000,
-        time=strava_activity.moving_time,
+        type=strava_activity.sport_type.root,
+        distance_km=strava_activity.distance / 1000,
+        time=timedelta(seconds=strava_activity.moving_time),
         athlete=Athlete(first_name=strava_activity.athlete.firstname, last_name=strava_activity.athlete.lastname),
     )
 
 
-def _to_athlete(strava_athlete: stravalib.model.Athlete) -> Athlete:
+def _to_athlete(strava_athlete: ClubAthlete) -> Athlete:
     return Athlete(
         first_name=strava_athlete.firstname,
         last_name=strava_athlete.lastname,

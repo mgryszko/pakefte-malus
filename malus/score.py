@@ -65,7 +65,7 @@ class malus_by_athlete:
         self.malus = malus
 
     def __call__(self, activities: Iterable[Activity], athletes: Iterable[Athlete]) -> dict[Athlete, Malus]:
-        rides = filter(lambda a: a.type == "Ride" and a.distance_km >= self.activity_cutoff_distance_km, activities)
+        rides = filter(lambda a: "Ride" in a.type and a.distance_km >= self.activity_cutoff_distance_km, activities)
 
         rides_by_athlete = {}
         rem_rides_by_athlete = {athlete: self.max_rides_per_athlete for athlete in athletes}
