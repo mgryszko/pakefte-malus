@@ -56,10 +56,10 @@ class Malus:
     malus: float
 
 
-class malus_by_athlete:
+class MalusByAthlete:
     def __init__(self, max_rides_per_athlete: int = 10,
         activity_cutoff_distance_km: float = 10,
-        malus: Callable[[float, float], Malus] = pakefte_malus):
+        malus: Callable[[float, timedelta], float] = pakefte_malus):
         self.max_rides_per_athlete = max_rides_per_athlete
         self.activity_cutoff_distance_km = activity_cutoff_distance_km
         self.malus = malus
@@ -67,7 +67,7 @@ class malus_by_athlete:
     def __call__(self, activities: Iterable[Activity], athletes: Iterable[Athlete]) -> dict[Athlete, Malus]:
         rides = filter(lambda a: "Ride" in a.type and a.distance_km >= self.activity_cutoff_distance_km, activities)
 
-        rides_by_athlete = {}
+        rides_by_athlete: dict[Athlete, CumulativeRides] = {}
         rem_rides_by_athlete = {athlete: self.max_rides_per_athlete for athlete in athletes}
         while len(rem_rides_by_athlete) > 0 and (ride := next(rides, None)) is not None:
             rem_athlete_rides = rem_rides_by_athlete.get(ride.athlete, 0)

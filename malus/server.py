@@ -11,7 +11,7 @@ from telegram import Bot, Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import ParseMode
 
 from malus.crypto import Crypto
-from malus.score import malus_by_athlete, filter_rides_above_cutoff_distance
+from malus.score import MalusByAthlete, filter_rides_above_cutoff_distance
 from malus.strava_client import get_club_athletes, get_club_activities
 
 CLIENT_ID = int(os.getenv("STRAVA_CLIENT_ID"))
@@ -90,8 +90,8 @@ async def get_pakefte_malus(code=None, state=None):
 
     activities = get_club_activities(client, CLUB_ID)
     athletes = get_club_athletes(client, CLUB_ID)
-    malus = malus_by_athlete(max_rides_per_athlete=MAX_RIDES_PER_ATHLETE,
-                             activity_cutoff_distance_km=ACTIVITY_CUTOFF_DISTANCE_KM)(activities, athletes)
+    malus = MalusByAthlete(max_rides_per_athlete=MAX_RIDES_PER_ATHLETE,
+                           activity_cutoff_distance_km=ACTIVITY_CUTOFF_DISTANCE_KM)(activities, athletes)
     malus, excluded_athletes = filter_rides_above_cutoff_distance(malus, RIDES_CUTOFF_DISTANCE_KM)
     sorted_malus = _sorted_by_malus_desc(malus)
     if state:
